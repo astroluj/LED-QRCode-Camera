@@ -31,12 +31,15 @@ public class RectDraw extends View {
 	private ArrayList<Integer> acii_str;
 
 	private String textLED ;
+	private int INTERVAL ;
+	private boolean emptyFlag ;
 	
-	public RectDraw(Context context, Scale scale) {
+	public RectDraw(Context context, Scale scale, int INTERVAL) {
 
 		super(context);
 
 		this.scale = scale;
+		this.INTERVAL = INTERVAL ;
 		this.leftTopCoordinate = new Coordinate();
 		this.rightBottomCoordinate = new Coordinate();
 
@@ -79,7 +82,7 @@ public class RectDraw extends View {
 						return;
 					}
 					// �Ϲ����� �ƽ�Ű �ڵ� ��
-					else if (' ' <= acii && acii <= '~') {
+					else if (' ' <= aciiValue && aciiValue <= '~') {
 						if (aciiValue_1 == 0)
 							aciiValue_1 = aciiValue;
 						else
@@ -134,7 +137,7 @@ public class RectDraw extends View {
 		canvas.drawText(textLED, scale.getScaleWidht() / 2, 600, paint);
 	}
 
-	public void setRepeatAcii() {
+	private void setRepeatAcii() {
 		String tempStr = "";
 
 		Log.d("AAA", textLED);
@@ -153,10 +156,9 @@ public class RectDraw extends View {
 
 			}
 
-			if (exposeCnt >= 2 && exposeFlag)
+			if (exposeCnt >= 2)
 				tempStr += repeat; // � ���ڿ��� 2�� �̻� ������
-			else if (!exposeFlag)
-				tempStr += repeat;
+			else tempStr += repeat;
 		}
 
 		// �빮�ڰ� ó������
@@ -172,9 +174,6 @@ public class RectDraw extends View {
 	public void sortInterval() {
 
 		long firstTime = captureTime.get(0);
-
-		Log.i("size", "captureCnt : " + captureCnt + " imgBytes.size : "
-				+ imgBytes.size() + " captureTime.size : " + captureTime.size());
 
 		ArrayList<Integer> temp = new ArrayList<Integer>();
 		temp.add(acii_str.get(0));
@@ -197,16 +196,15 @@ public class RectDraw extends View {
 		for (int s : acii_str)
 			textLED += (char) s;
 		setRepeatAcii();
-		rectD.invalidate();
+		this.invalidate();
 
 		acii_str.removeAll(acii_str);
 		captureTime.removeAll(captureTime);
-		imgBytes.removeAll(imgBytes);
 		img.removeAll(img);
 	}
 
 	// ReadImage
-	public void ImageAnalyze() {
+	public void ImageAnalyze(Camera camera, ArrayList<byte[]> imgBytes) {
 		// 캡쳐 멈춤
 		camera.stopPreview();
 		camera.setOneShotPreviewCallback(null);
@@ -217,18 +215,17 @@ public class RectDraw extends View {
 		int cameraWidth = params.getPreviewSize().width, cameraHeight = params
 				.getPreviewSize().height, cameraFormat = params
 				.getPreviewFormat();
-		float width = Math.abs(x_1 - x_2), height = Math.abs(y_1 - y_2);
+		float width = Math.abs(leftTopCoordinate.getX() - rightBottomCoordinate.getX()),
+				height = Math.abs(leftTopCoordinate.getY() - rightBottomCoordinate.getY());
 
 		// Create Rectangle
-		x_1 = Math.min(x_1, x_2);
-		y_1 = Math.min(y_1, y_2);
+		leftTopCoordinate.setX(Math.min(leftTopCoordinate.getX(), rightBottomCoordinate.getX())) ;
+		leftTopCoordinate.setY(Math.min(leftTopCoordinate.getY(), rightBottomCoordinate.getY())) ;
 
 		Rect area = new Rect(0, 0, cameraWidth, cameraHeight);
 		YuvImage yuv;
 
-		Log.i("size", "captureCnt : " + captureCnt + " imgBytes.size : "
-				+ imgBytes.size() + " captureTime.size : " + captureTime.size());
-		for (int i = 0, delCnt = 0; i < captureCnt; i++) {
+		for (int i = 0, delCnt = 0, captureCnt = imgBytes.size() ; i < captureCnt; i++) {
 			Bitmap tempImg;
 
 			// prieview Capture Image to YuvImage
@@ -246,25 +243,32 @@ public class RectDraw extends View {
 			tempImg = Bitmap.createBitmap(tempImg, 0, 0, tempImg.getWidth(),
 					tempImg.getHeight(), m, true); // ȸ��
 			tempImg = Bitmap.createBitmap(tempImg,
-					(int) (x_1 * tempImg.getWidth() / scaleWidth), (int) (y_1
-							* tempImg.getHeight() / scaleHeight), (int) (width
-							* tempImg.getWidth() / scaleWidth), (int) (height
-							* tempImg.getHeight() / scaleHeight)); // �ػ󵵷� �߶�
+					(int) (leftTopCoordinate.getX() * tempImg.getWidth() / scale.getScaleWidht()),
+					(int) (leftTopCoordinate.getY() * tempImg.getHeight() / scale.getScaleHeight()),
+					(int) (width * tempImg.getWidth() / scale.getScaleWidht()),
+					(int) (height * tempImg.getHeight() / scale.getScaleHeight())); // �ػ󵵷� �߶�
 
-			rectD.onDrawTable(tempImg); // img 그리기
+			this.onDrawTable(tempImg); // img 그리기
 
-			if (!rectD.getEmptyFlag())
+			if (!emptyFlag)
 				img.add(tempImg); // ���� �׸��� �ƴϸ� �߰�
 
 			else {
 				captureTime.remove(i - delCnt++); // ���� �׸��� ��� ����
-				rectD.setEmptryFlag(false);
+				emptyFlag = false ;
 			}
 
 		}
-		x_1 = x_2 = y_1 = y_2 = 0; // 좌표 초기화
+		// 좌표 초기화
+		leftTopCoordinate.setCoordinate(0, 0);
+		rightBottomCoordinate.setCoordinate(0, 0);
 	}
 
+	// Set Interval
+	public void setInterval (int INTERVAL) {
+		this.INTERVAL = INTERVAL ;
+	}
+	
 	// Get LED State
 	private boolean comparePixel(int y, int height, int x, int width, Bitmap img) {
 		int colorCnt = 0;

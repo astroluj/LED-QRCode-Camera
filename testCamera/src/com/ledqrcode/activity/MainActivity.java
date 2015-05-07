@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
 		scale =new Scale (disM) ;
 
 		// RectDraw Init
-		rectDraw = new RectDraw (getApplicationContext(), scale) ;
+		rectDraw = new RectDraw (getApplicationContext(), scale, INTERVAL) ;
 		// CameraFace init
 		cameraFace = new CameraFace (getApplicationContext(), camera, rectDraw) ;
 		
@@ -119,8 +119,10 @@ public class MainActivity extends Activity {
 		if (resultCode == Activity.RESULT_OK)
 			// InformationInput에서 호출한 경우에만 처리합니다.
 			if (requestCode == INTERVAL_RESULT_OK)
-				if (!getIntent ().getStringExtra("interval").equals(""))
+				if (!getIntent ().getStringExtra("interval").equals("")) {
 		 			INTERVAL = Integer.parseInt (getIntent ().getStringExtra("interval")) ;
+		 			if (rectDraw != null) rectDraw.setInterval (INTERVAL) ;
+				}
 	}
 	
 	// Camera Preview Callback
@@ -136,8 +138,10 @@ public class MainActivity extends Activity {
 				// Release Thread
 				releaseTimerThread();
 
-				rectDraw.ImageAnalyze(); // Read LED QRCode Data
+				rectDraw.ImageAnalyze(camera, imgBytes); // Read LED QRCode Data
 				rectDraw.sortInterval(); // Data Analyze
+				
+				imgBytes.removeAll(imgBytes);
 			}
 		}
 	};
@@ -167,7 +171,7 @@ public class MainActivity extends Activity {
 			return false; 
 
 		// Multi Touch Accept
-		switch (event.getAction() & event.ACTION_MASK) {
+		switch (event.getAction() & MotionEvent.ACTION_MASK) {
 		case MotionEvent.ACTION_DOWN: // Touching
 			// Set Coordinate
 			leftTopCoordinate.setCoordinate (event.getX(), event.getY());
